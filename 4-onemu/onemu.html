@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>人間関係に悩まされないSNS「ペンペンちゃん」</title>
+    <style>
+        :root {
+            --primary-color: #64b5f6;
+            --bg-color: #e3f2fd;
+            --text-color: #333;
+            --my-msg-color: #81c784;
+            --ai-msg-color: #ffb74d;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Helvetica Neue', Arial, sans-serif; }
+        body { background-color: var(--bg-color); color: var(--text-color); display: flex; justify-content: center; align-items: center; min-height: 100vh; }
+        .app-container { width: 100%; max-width: 450px; height: 90vh; background: #fff; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); overflow: hidden; display: flex; flex-direction: column; position: relative; }
+        .page { display: none; width: 100%; height: 100%; flex-direction: column; }
+        .page.active { display: flex; }
+        header { background: var(--primary-color); color: white; padding: 15px; text-align: center; font-weight: bold; font-size: 1.2rem; display: flex; justify-content: space-between; align-items: center; }
+        .back-btn { background: none; border: none; color: white; cursor: pointer; font-size: 1rem; }
+        
+        /* ログイン画面 */
+        .login-box { padding: 40px 20px; display: flex; flex-direction: column; justify-content: center; height: 100%; text-align: center; }
+        .logo { font-size: 2.5rem; margin-bottom: 30px; color: var(--primary-color); font-weight: bold; }
+        input[type="text"], input[type="password"] { width: 100%; padding: 12px; margin-bottom: 15px; border: 1px solid #ccc; border-radius: 8px; }
+        .btn { background: var(--primary-color); color: white; border: none; padding: 12px; border-radius: 8px; cursor: pointer; font-weight: bold; }
+        .forgot-link { margin-top: 15px; color: #888; font-size: 0.85rem; text-decoration: underline; cursor: pointer; }
+
+        /* トップページ（トーク一覧） */
+        .talk-list { flex: 1; overflow-y: auto; }
+        .talk-item { display: flex; align-items: center; padding: 15px; border-bottom: 1px solid #eee; cursor: pointer; }
+        .talk-item:hover { background: #f9f9f9; }
+        .avatar { width: 50px; height: 50px; border-radius: 50%; background: #ccc; margin-right: 15px; display: flex; justify-content: center; align-items: center; font-size: 1.5rem; }
+        .talk-info { flex: 1; }
+        .talk-name { font-weight: bold; margin-bottom: 5px; }
+        .talk-preview { font-size: 0.85rem; color: #666; }
+
+        /* トーク画面 */
+        .chat-area { flex: 1; overflow-y: auto; padding: 15px; background: #f0f4f8; display: flex; flex-direction: column; gap: 10px; }
+        .msg { max-width: 75%; padding: 10px 15px; border-radius: 15px; font-size: 0.95rem; line-height: 1.4; position: relative; }
+        .msg.me { background: var(--my-msg-color); align-self: flex-end; border-top-right-radius: 2px; }
+        .msg.other { background: #fff; align-self: flex-start; border-top-left-radius: 2px; border: 1px solid #ddd; }
+        .msg.ai { background: var(--ai-msg-color); align-self: center; border-radius: 10px; text-align: center; font-size: 0.85rem; width: 90%; color: #333; font-weight: bold; }
+        .read-status { font-size: 0.7rem; color: #888; position: absolute; bottom: -18px; right: 5px; }
+        .chat-input-area { padding: 10px; display: flex; gap: 10px; border-top: 1px solid #eee; background: #fff; }
+        .chat-input-area input { flex: 1; padding: 10px; border: 1px solid #ccc; border-radius: 20px; }
+
+        /* 通知管理機能（設定画面） */
+        .settings-area { padding: 20px; display: flex; flex-direction: column; gap: 20px; }
+        .setting-row { display: flex; justify-content: space-between; align-items: center; padding: 15px; background: #f9f9f9; border-radius: 10px; }
+        .switch { position: relative; display: inline-block; width: 50px; height: 26px; }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #ccc; transition: .4s; border-radius: 34px; }
+        .slider:before { position: absolute; content: ""; height: 18px; width: 18px; left: 4px; bottom: 4px; background-color: white; transition: .4s; border-radius: 50%; }
+        input:checked + .slider { background-color: var(--primary-color); }
+        input:checked + .slider:before { transform: translateX(24px); }
+    </style>
+</head>
+<body>
+
+<div class="app-container">
+
+    <!-- 1. ログイン画面 -->
+    <div id="page-login" class="page active">
+        <div class="login-box">
+            <div class="logo">　ペンペンちゃん</div>
+            <input type="text" id="login-id" placeholder="ユーザーID（ペンペンID）">
+            <input type="password" id="login-pw" placeholder="パスワード">
+            <button class="btn" onclick="navigateTo('page-top')">ログイン</button>
+            <div class="forgot-link" onclick="alert('登録時のメールアドレスに再設定URLを送信します（ダミー表示）')">パスワードを忘れた人はこちら</div>
+        </div>
+    </div>
+
+    <!-- 2. トップページ（トーク一覧） -->
+    <div id="page-top" class="page">
+        <header>
+            <span>💬 トーク一覧</span>
+            <button class="back-btn" onclick="navigateTo('page-settings')">⚙️ 設定</button>
+        </header>
+        <div class="talk-list">
+            <div class="talk-item" onclick="openChat('AIサポート（公式）', 'ai')">
+                <div class="avatar" style="background: #ffb74d;">🐧</div>
+                <div class="talk-info">
+                    <div class="talk-name">AIサポートトークルーム</div>
+                    <div class="talk-preview" id="preview-ai">人間関係の悩みをAIがやさしく仲介します。</div>
+                </div>
+            </div>
+            <div class="talk-item" onclick="openChat('友人A', 'friend')">
+                <div class="avatar" style="background: #ba68c8;">👤</div>
+                <div class="talk-info">
+                    <div class="talk-name">友人A</div>
+                    <div class="talk-preview" id="preview-friend">了解！また連絡するね！</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 3. トーク画面 -->
+    <div id="page-chat" class="page">
+        <header>
+            <button class="back-btn" onclick="navigateTo('page-top')">◀ 戻る</button>
+            <span id="chat-title">トーク</span>
+            <span style="width:30px;"></span>
+        </header>
+        <div class="chat-area" id="chat-box">
+            <!-- JavaScriptでメッセージが追加されます -->
+        </div>
+        <div class="chat-input-area">
+            <input type="text" id="chat-input" placeholder="メッセージを入力...">
+            <button class="btn" style="border-radius: 20px; padding: 0 20px;" onclick="sendMessage()">送信</button>
+        </div>
+    </div>
+
+    <!-- 4. 通知管理機能（設定画面） -->
+    <div id="page-settings" class="page">
+        <header>
+            <button class="back-btn" onclick="navigateTo('page-top')">◀ 戻る</button>
+            <span>通知・既読設定</span>
+            <span style="width:30px;"></span>
+        </header>
+        <div class="settings-area">
+            <div class="setting-row">
+                <div>
+                    <strong>既読機能のオン/オフ</strong>
+                    <div style="font-size:0.8rem; color:#888; margin-top:4px;">オフにすると相手に既読がつきません</div>
+                </div>
+                <label class="switch">
+                    <input type="checkbox" id="setting-read" checked onchange="toggleReadSetting()">
+                    <span class="slider"></span>
+                </label>
+            </div>
+            <div class="setting-row">
+                <div>
+                    <strong>アプリの通知</strong>
+                    <div style="font-size:0.8rem; color:#888; margin-top:4px;">新着メッセージのポップアップ</div>
+                </div>
+                <label class="switch">
+                    <input type="checkbox" checked>
+                    <span class="slider"></span>
+                </label>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<script>
+    // グローバル状態管理
+    let currentChatType = ''; 
+    let isReadEnabled = true;
+
+    // 画面遷移関数
+    function navigateTo(pageId) {
+        document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+        document.getElementById(pageId).classList.add('active');
+    }
+
+    // チャット画面を開く
+    function openChat(title, type) {
+        currentChatType = type;
+        document.getElementById('chat-title').textContent = title;
+        const chatBox = document.getElementById('chat-box');
+        chatBox.innerHTML = ''; // 初期化
+
+        if (type === 'ai') {
+            chatBox.innerHTML = `
+                <div class="msg other">最近、友達とのLINEの返信に疲れちゃって…どうすればいいかな？</div>
+                <div class="msg ai">🐧 AIサポートアドバイス：<br>「いつも丁寧で素敵な返信をしている証拠ですね！心が疲れているときは『スタンプ1つ』で返したり、あらかじめ『今バタバタしてるから夜返すね！』と定型文を登録して伝えるだけで、相手も安心しつつ自分のペースを守れますよ」</div>
+            `;
+        } else {
+            chatBox.innerHTML = `
+                <div class="msg other">来週のグループワークの件だけど、進捗どう？<span class="read-status">${isReadEnabled ? '既読' : ''}</span></div>
+            `;
+        }
+        navigateTo('page-chat');
+        chatBox.scrollTop = chatBox.scrollHeight;
+    }
+
+       // メッセージ送信処理
+    function sendMessage() {
+        const input = document.getElementById('chat-input');
+        const text = input.value.trim();
+        if (!text) return;
+
+        const chatBox = document.getElementById('chat-box');
+
+        // 自分のメッセージを追加
+        const myMsg = document.createElement('div');
+        myMsg.className = 'msg me';
+        myMsg.innerHTML = `${text}<span class="read-status">${isReadEnabled ? '既読' : ''}</span>`;
+        chatBox.appendChild(myMsg);
+
+        // トーク一覧のプレビュー更新
+        document.getElementById(`preview-${currentChatType}`).textContent = text;
+        input.value = '';
+        chatBox.scrollTop = chatBox.scrollHeight;
+
+        // AIサポートルームの場合の自動応答シミュレーション
+        if (currentChatType === 'ai') {
+            setTimeout(() => {
+                const aiMsg = document.createElement('div');
+                aiMsg.className = 'msg ai';
+                // 【修正】シングルクォートからバッククォート（`）に変更しました
+                aiMsg.innerHTML = `🐧 AIサポートアドバイス：<br>「『${text}』という気持ち、とてもよく分かります。人間関係を円滑にするために、まずは深呼吸をして、自分の気持ちを主語（私は〜と思う）にして伝えてみるのがおすすめペン！」`;
+                chatBox.appendChild(aiMsg);
+                chatBox.scrollTop = chatBox.scrollHeight;
+                document.getElementById('preview-ai').textContent = "AIサポートから新しいアドバイスがあります。";
+            }, 1000);
+        }
+    } // 【修正】ここでsendMessage関数を新しく閉じました！
+
+    // 既読設定の切り替え
+    function toggleReadSetting() {
+        isReadEnabled = document.getElementById('setting-read').checked;
+        // 【修正】全体をバッククォート（`）で囲み、中のON/OFFをシングルクォートに変更しました
+        alert(`既読表示設定を ${isReadEnabled ? 'ON' : 'OFF'} に変更しました。`);
+    }
+</script>
+</body>
+</html>
