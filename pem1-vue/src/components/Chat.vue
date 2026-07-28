@@ -1,5 +1,7 @@
 <script setup>
 import { computed, reactive, ref } from "vue";
+import { useAIHelper } from "../composables/useAIHelper";
+import helperAvatar from "../img/無題256_20260728101813.png";
 
 const props = defineProps({
   chatId: {
@@ -101,6 +103,8 @@ const chats = reactive({
 const currentChat = computed(() => chats[props.chatId]);
 const message = ref("");
 
+const { isReplying, requestHelperReply, helperName } = useAIHelper();
+
 function formatTime(date) {
   return new Intl.DateTimeFormat("ja-JP", {
     hour: "2-digit",
@@ -130,6 +134,25 @@ function handleSubmit() {
 
   message.value = "";
 }
+
+// お助けボタン: 自分の代わりにヘルパーキャラが返信を送る
+async function handleHelperReply() {
+  if (!currentChat.value) {
+    return;
+  }
+
+  const reply = await requestHelperReply("default");
+
+  currentChat.value.messages.push({
+    id: Date.now(),
+    userName: reply.author,
+    avatar: helperAvatar,
+    text: reply.text,
+    time: formatTime(new Date()),
+    isMine: true,
+    isAI: true,
+  });
+}
 </script>
 
 <template>
@@ -144,13 +167,24 @@ function handleSubmit() {
         v-for="chatMessage in currentChat.messages"
         :key="chatMessage.id"
         class="chat-message"
-        :class="{ 'is-mine': chatMessage.isMine }"
+        :class="{ 'is-mine': chatMessage.isMine, 'is-ai': chatMessage.isAI }"
       >
-        <div class="avatar" aria-hidden="true">{{ chatMessage.avatar }}</div>
+        <div class="avatar" aria-hidden="true">
+          <img
+            v-if="chatMessage.isAI"
+            :src="chatMessage.avatar"
+            class="avatar-image"
+            alt=""
+          />
+          <template v-else>{{ chatMessage.avatar }}</template>
+        </div>
 
         <div class="message-body">
           <div class="message-meta">
-            <span class="user-name">{{ chatMessage.userName }}</span>
+            <span class="user-name">
+              {{ chatMessage.userName }}
+              <span v-if="chatMessage.isAI" class="ai-badge">AI</span>
+            </span>
             <time>{{ chatMessage.time }}</time>
           </div>
           <p>{{ chatMessage.text }}</p>
@@ -170,7 +204,17 @@ function handleSubmit() {
         />
       </label>
 
-      <button type="submit">送信</button>
+      <div class="chat-actions">
+        <button
+          type="button"
+          class="helper-btn"
+          :disabled="isReplying"
+          @click="handleHelperReply"
+        >
+          {{ isReplying ? "考え中…" : "お助け" }}
+        </button>
+        <button type="submit">送信</button>
+      </div>
     </form>
   </article>
 
@@ -251,6 +295,21 @@ h1 {
   justify-content: flex-end;
 }
 
+.chat-message.is-ai .message-body {
+  background: #fff;
+  border: 1px dashed #2f6f56;
+}
+
+.ai-badge {
+  font-size: 10px;
+  background: #2f6f56;
+  color: #fff;
+  border-radius: 999px;
+  padding: 1px 6px;
+  margin-left: 4px;
+  vertical-align: middle;
+}
+
 .avatar {
   width: 40px;
   height: 40px;
@@ -260,6 +319,15 @@ h1 {
   background: #2f6f56;
   color: #fff;
   font-weight: 700;
+  overflow: hidden;
+}
+
+.avatar-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 15%;
+  transform: scale(2.2);
 }
 
 .message-body {
@@ -318,6 +386,11 @@ input {
   font: inherit;
 }
 
+.chat-actions {
+  display: flex;
+  gap: 8px;
+}
+
 button {
   min-width: 80px;
   padding: 10px 16px;
@@ -334,9 +407,29 @@ button:hover {
   background: #369b6f;
 }
 
+.helper-btn {
+  background: #fff;
+  color: #2f6f56;
+  border: 1px solid #2f6f56;
+}
+
+.helper-btn:hover {
+  background: #eef4f1;
+}
+
+.helper-btn:disabled {
+  opacity: 0.6;
+  cursor: default;
+  background: #fff;
+}
+
 @media (max-width: 520px) {
   .chat-form {
     grid-template-columns: 1fr;
+  }
+
+  .chat-actions {
+    flex-direction: column;
   }
 
   button {
